@@ -9,10 +9,11 @@
     "url": "git@github.com:hazerman/SeaBattle.git"
   },
   "devDependencies": {
-    "eslint": "6.8.0"
+    "eslint": "6.8.0",
+    "eslint-config-airbnb-base": "14.0.0"
   },
   "scripts": {
     "test": "eslint js/"
-  },  
+  },
   "license": "ISC"
 }
