@@ -1,0 +1,18 @@
+{
+  "author": "hazerman",
+  "name": "seabattle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Проект морского боя",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:hazerman/SeaBattle.git"
+  },
+  "devDependencies": {
+    "eslint": "6.8.0"
+  },
+  "scripts": {
+    "test": "eslint js/"
+  },  
+  "license": "ISC"
+}
