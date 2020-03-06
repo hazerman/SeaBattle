@@ -1,5 +1,6 @@
 'use strict';
 
+const HIT_FLAG = 'x';
 const record = document.querySelector('#record');
 const shot = document.querySelector('#shot');
 const hit = document.querySelector('#hit');
@@ -8,43 +9,14 @@ const enemy = document.querySelector('#enemy');
 const reloadButton = document.querySelector('#again');
 const header = document.querySelector('.header');
 
-const game = {
-  record: localStorage.getItem('seaBattleRecord') || 0,
-  shot: 0,
-  hit: 0,
-  dead: 0,
-  set updateData(data) {
-    ++this[data];
-    this.render();
-  },
-  render() {
-    record.textContent = this.record;
-    shot.textContent = this.shot;
-    hit.textContent = this.hit;
-    dead.textContent = this.dead;
-  }
-};
-
 const field = {
-  ships: [
-    {
-      location: ['11', '12', '13', '14'],
-      hit: ['', '', '', '']
-    },
-    {
-      location: ['56', '66', '76'],
-      hit: ['', '', '']
-    },
-    {
-      location: ['31', '32'],
-      hit: ['', '']
-    },
-    {
-      location: ['88'],
-      hit: ['']
-    }
-  ],
-  shipCount: 4,
+  size: 10,
+  ships: [],
+  shipCount: 0,
+  restart() {
+    this.ships = [];
+    this.shipCount = 0;
+  },
   showMiss(data) {
     this.changeClass(data, 'miss');
   },
@@ -59,6 +31,104 @@ const field = {
   }
 };
 
+const game = {
+  record: localStorage.getItem('seaBattleRecord') || 0,
+  shot: 0,
+  hit: 0,
+  dead: 0,
+  shipOption: {
+    count: [1, 2, 3, 4],
+    size: [4, 3, 2, 1]
+  },
+  collision: new Set(),
+  set updateData(data) {
+    ++this[data];
+    this.render();
+  },
+  restart() {
+    this.shot = 0;
+    this.hit = 0;
+    this.dead = 0;
+    this.collision = new Set();
+    this.render();
+  },
+  render() {
+    record.textContent = this.record;
+    shot.textContent = this.shot;
+    hit.textContent = this.hit;
+    dead.textContent = this.dead;
+  },
+  generateShip() {
+    for (let i = 0; i < this.shipOption.count.length; i++) {
+      for (let j = 0; j < this.shipOption.count[i]; j++) {
+        const size = this.shipOption.size[i];
+        const ship = this.generateShipOptions(size);
+        field.ships.push(ship);
+        field.shipCount++;
+      }
+    }
+  },
+  generateShipOptions(shipSize) {
+    const ship = {
+      hit: [],
+      location: []
+    };
+    const location = {
+      x: 0,
+      y: 0,
+      update(newX, newY) {
+        this.x = newX;
+        this.y = newY;
+      }
+    };
+
+    const direction = Math.round(Math.random());
+    const cell = Math.floor(Math.random() * field.size);
+    const limitedCell = Math.floor(Math.random() * (field.size - shipSize));
+    if (direction) {
+      location.update(cell, limitedCell);
+    } else {
+      location.update(limitedCell, cell);
+    }
+    for (let i = 0; i < shipSize; i++) {
+      if (direction) {
+        ship.location.push(location.x + '' + (location.y + i));
+      } else {
+        ship.location.push((location.x + i) + '' + location.y);
+      }
+      ship.hit.push('');
+    }
+    if (this.isOnCollision(ship.location)) {
+      return this.generateShipOptions(shipSize);
+    }
+    this.addCollision(ship.location, direction);
+    return ship;
+  },
+  isOnCollision(location) {
+    let result = false;
+    location.forEach((item) => {
+      if (this.collision.has(item)) {
+        result = true;
+      }
+    });
+    return result;
+  },
+  addCollision(location, direction) {
+    const startX = location[0][0] - 1;
+    const startY = location[0][1] - 1;
+    const endX = direction ? startX + 2 : startX + location.length + 1;
+    const endY = direction ? startY + location.length + 1 : startY + 2;
+    for (let i = startX; i <= endX; i++) {
+      for (let j = startY; j <= endY; j++) {
+        if (i >= 0 && i < field.size && j >= 0 && j < field.size) {
+          const coord = i + '' + j;
+          this.collision.add(coord);
+        }
+      }
+    }
+  }
+};
+
 const fire = (evt) => {
   const target = evt.target.closest('td');
   if (target && !target.classList.length) {
@@ -69,8 +139,8 @@ const fire = (evt) => {
       if (index >= 0) {
         field.showHit(target);
         game.updateData = 'hit';
-        ship.hit[index] = 'x';
-        const isDead = ship.hit.every(item => item === 'x');
+        ship.hit[index] = HIT_FLAG;
+        const isDead = ship.hit.every(item => item === HIT_FLAG);
         if (isDead) {
           game.updateData = 'dead';
           ship.location.forEach(location => {
@@ -93,11 +163,33 @@ const fire = (evt) => {
   }
 };
 
+const restart = () => {
+  const td = document.querySelectorAll('td[class]');
+  td.forEach((item) => {
+    item.removeAttribute('class');
+  });
+  if (field.shipCount < 1) {
+    header.textContent = 'Sea Battle';
+    header.removeAttribute('style');
+    enemy.addEventListener('click', fire);
+  }
+  field.restart();
+  game.restart();
+  game.generateShip();
+};
+
 const init = () => {
   enemy.addEventListener('click', fire);
   game.render();
-  reloadButton.addEventListener('click', () => {
-    location.reload();
+  game.generateShip();
+  reloadButton.addEventListener('click', (evt) => {
+    evt.preventDefault();
+    restart();
+  });
+  record.addEventListener('dblclick', () => {
+    localStorage.clear();
+    game.record = 0;
+    game.render();
   });
 };
 
